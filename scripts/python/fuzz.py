@@ -18,6 +18,7 @@ from pathlib import Path
 import utils
 
 evaluation_time = 60 * 60 * 24 * 2 + 60
+evaluation_time = 3600
 # evaluation_time = 60 * 60 * 24 + 60
 
 class QEMUFuzz(object):
@@ -189,25 +190,26 @@ class QEMUFuzz(object):
 
             seed_pattern = r'(\d{6})'
 
-            if not any(cov_record_coverage_final_dir.iterdir()):
+            if True or not any(cov_record_coverage_final_dir.iterdir()):
                 for file in unique_file_paths:
                     match = re.search(seed_pattern, file.name)
                     if not match:
                         continue
                     profraw_name = f'{match.group(1)}'
                     file_profraw = profraw_dir / f'{target}_{profraw_name}.profraw'
-                    result = utils.run_cmd(f'QEMU_DEVICE_MODEL_FILE={device_model} LLVM_PROFILE_FILE={file_profraw} '
-                            f'{fuzzer} --fuzz-target=generic-fuzz-{target} -timeout=1 -runs=1 {file}', capture_output=True, env=env)
-                    if isinstance(result, bytes):
-                        utils.run_cmd(f'rm {file}')
+                    if not file_profraw.exists():
+                        result = utils.run_cmd(f'QEMU_DEVICE_MODEL_FILE={device_model} LLVM_PROFILE_FILE={file_profraw} '
+                                f'{fuzzer} --fuzz-target=generic-fuzz-{target} -timeout=1 -runs=1 {file}', capture_output=True, env=env)
+                        if isinstance(result, bytes):
+                            utils.run_cmd(f'rm {file}')
 
             pattern = re.compile(r"cov_(\d+)")
 
             os.chdir(profraw_dir)
             cov_dirs = sorted(cov_record_dir.iterdir(), key=lambda x: int(pattern.search(x.name).group(1)) if pattern.search(x.name) else float('inf'))
             for idx, tmp1_dir in enumerate(cov_dirs):
-                if idx % 6 != 0:
-                    continue  # Skip directories not in the 6th position
+                # if idx % 6 != 0:
+                #     continue  # Skip directories not in the 6th position
 
                 target_index_file = cov_record_coverage_final_dir / f'{tmp1_dir.stem}.txt'
                 if target_index_file.exists():
@@ -343,7 +345,7 @@ class QEMUFuzz(object):
             match = pattern.search(file_name)
             if match:
                 numeric_part = int(match.group(1))  # Extract the numeric part from the filename
-                if numeric_part % 6 == 1:  # Check if the file corresponds to every 6th step (e.g., 001, 007, etc.)
+                if True or numeric_part % 6 == 1:  # Check if the file corresponds to every 6th step (e.g., 001, 007, etc.)
                     index = cov_dir / file_name
                     with open(index, 'r') as f:
                         lines = f.readlines()
@@ -374,9 +376,10 @@ class QEMUFuzz(object):
 
         # Sort the subdirectories by name and select the last one
         last_subdir = sorted(subdirs, key=lambda x: x.name)[-1]
-
-        for target_dir in last_subdir.iterdir():
-            self._collect_cov_one(target_dir, last_subdir)
+        last_subdirs = sorted(subdirs, key=lambda x: x.name)
+        for last_subdir in last_subdirs:
+            for target_dir in last_subdir.iterdir():
+                self._collect_cov_one(target_dir, last_subdir)
 
         for cov_dir in cov_record_coverage_dir.iterdir():
             self._cov_draw(cov_dir)
