@@ -90,7 +90,7 @@ class Setup(object):
         print(f'[*]Start to build qemu {build_type}...')
 
         if build_type == 'all':
-            self._build_qemu('upstream')
+            #self._build_qemu('upstream')
             self._build_qemu('coverage')
             self._build_qemu('fuzz_with_asan')
             self._build_qemu('fuzz_without_asan')
