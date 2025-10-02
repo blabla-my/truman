@@ -36,6 +36,7 @@ def build_container():
         run_command = [
             "docker", "run", "-itd", "-v", "/dev:/dev", '--privileged',
             "-v", f"{env.project_dir}:/home/{os.getenv('USER')}/{env.project_name}",
+            "-v", "/var/tmp/vhost.1:/var/tmp/vhost.1",
             "--name", f"{env.container_name}",
             IMAGE_NAME
         ]
