@@ -254,12 +254,13 @@ class QEMUFuzz(object):
                 coverage_dir = cov_record_coverage_dir / f'{tmp1_dir.stem}-{suffix}' / f'{target}'
 
                 profdata = (tmp1_dir / f'{target}') / f'{target}.profdata'
-                utils.run_cmd(f'llvm-profdata merge -output={profdata} {" ".join(profraw_list)}')
-                utils.run_cmd(f'llvm-cov show {fuzzer} '
-                        f'-instr-profile={profdata} --format {output_format} -show-expansions '
-                        f'{extra} --output-dir={coverage_dir}')
+                if len(profraw_list) != 0:
+                    utils.run_cmd(f'llvm-profdata merge -output={profdata} {" ".join(profraw_list)}')
+                    utils.run_cmd(f'llvm-cov show {fuzzer} '
+                            f'-instr-profile={profdata} --format {output_format} -show-expansions '
+                            f'{extra} --output-dir={coverage_dir}')
 
-                self._run_cmd(f'cp {coverage_dir / "index.txt"} {target_index_file}', check=False)
+                    self._run_cmd(f'cp {coverage_dir / "index.txt"} {target_index_file}', check=False)
 
             return True
         else:
@@ -399,7 +400,7 @@ class QEMUFuzz(object):
             self._collect_cov_record()
             os.chdir(self.args.collect)
             self._run_cmd(f'tar -czvf {tar_name} final_cov')
-            utils.run_cmd(f'rm -rf cov_record_coverage')
+            # utils.run_cmd(f'rm -rf cov_record_coverage')
             tar_dir = f'{self.args.collect.parent}'
         else:
             if Path(tar_name).exists():
