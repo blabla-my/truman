@@ -120,7 +120,7 @@ class Setup(object):
         git_version = git.Repo(search_parent_directories=True).head.object.hexsha[:8]
 
         if build_type != 'upstream':
-            utils.run_cmd('git apply ../../config/patch/qemu_truman.patch')
+            utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
 
         os.chdir(qemu_build_dir)
         softmmu = []
