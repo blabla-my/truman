@@ -3,6 +3,7 @@ import os
 import git
 import yaml
 import time
+import json
 import psutil
 import logging
 import argparse
@@ -17,8 +18,8 @@ from pathlib import Path
 
 import utils
 
-evaluation_time = 60 * 60 * 24 * 2 + 60
-evaluation_time = 3600
+evaluation_time = 60 * 60 * 24
+# evaluation_time = 3600
 # evaluation_time = 60 * 60 * 24 + 60
 
 class QEMUFuzz(object):
@@ -79,6 +80,7 @@ class QEMUFuzz(object):
         os.chdir(f'{self.env.third_party_qemu_dir}')
         self.git_version = git.Repo(search_parent_directories=True).head.object.hexsha[:8]
         utils.run_cmd(f'cp {self.env.config_dbm_dir}/* {self.env.out_static_analysis_dir}')
+        print("[+] setup done.")
 
     def _parse_args(self):
         parser = argparse.ArgumentParser()
@@ -331,7 +333,8 @@ class QEMUFuzz(object):
         branch_count = [0]
 
         target_excel = cov_dir / f'{target}.xlsx'
-        if target_excel.exists():
+        target_json = cov_dir / f'{target}.json'
+        if target_excel.exists() and target_json.exists():
             print('Already done')
             return
 
@@ -365,6 +368,12 @@ class QEMUFuzz(object):
         df = pd.DataFrame({'Count': branch_count, 'Coverage': branch_coverage})
         df.to_excel(cov_dir / f'{target}.xlsx')
         df.to_csv(cov_dir / f'{target}.csv')
+
+        # Save the results to JSON
+        branch_coverage_float = [float(cov.strip("%")) for cov in branch_coverage]
+        with open(f"{cov_dir}/{target}.json", "w") as f:
+            json.dump(branch_coverage_float, f)
+        
 
     def _collect_cov_record(self):
         cov_record_dir = self.args.collect / 'cov_record'

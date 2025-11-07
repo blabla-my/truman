@@ -39,7 +39,6 @@ def process(args):
     extra_flag = ['--cov_record'] if args.trend else []
 
     for subdir in base_path.iterdir():
-        print(subdir.name)
         if subdir.is_dir() and suffix in subdir.name:
             parts = subdir.name.split('_')
             if len(parts) < 2:
@@ -53,6 +52,7 @@ def process(args):
                 '--target', target,
                 '--tool', tool
             ] + evaluation_flag + extra_flag
+            print(f"[+] {cmd}")
             commands.append((cmd, env_scripts_python_dir, debug))
 
     # Print number of commands and number of workers

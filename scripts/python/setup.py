@@ -98,7 +98,7 @@ class Setup(object):
         elif build_type == 'upstream':
             qemu_build_dir = self.env.build_qemu_upstream_dir
             qemu_install_dir = self.env.install_qemu_upstream_dir
-            build_flags = '--enable-debug --enable-sanitizers'
+            build_flags = '--enable-debug --enable-asan'
         elif build_type == 'coverage':
             qemu_build_dir = self.env.build_qemu_coverage_dir
             qemu_install_dir = self.env.install_qemu_coverage_dir
@@ -106,7 +106,7 @@ class Setup(object):
         elif build_type == 'fuzz_with_asan':
             qemu_build_dir = self.env.build_qemu_fuzz_with_asan_dir
             qemu_install_dir = self.env.install_qemu_fuzz_with_asan_dir
-            build_flags = '--enable-fuzzing --enable-sanitizers --extra-cflags="-O3"'
+            build_flags = '--enable-fuzzing --enable-asan --extra-cflags="-O3"'
         elif build_type == 'fuzz_without_asan':
             qemu_build_dir = self.env.build_qemu_fuzz_without_asan_dir
             qemu_install_dir = self.env.install_qemu_fuzz_without_asan_dir
@@ -119,8 +119,8 @@ class Setup(object):
         os.chdir(qemu_source)
         git_version = git.Repo(search_parent_directories=True).head.object.hexsha[:8]
 
-        if build_type != 'upstream':
-            utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
+        # if build_type != 'upstream':
+        #     utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
 
         os.chdir(qemu_build_dir)
         softmmu = []
@@ -150,9 +150,9 @@ class Setup(object):
         print(f'[+]Building qemu {build_type} done.')
 
         os.chdir(qemu_source)
-        if build_type != 'upstream':
-            utils.run_cmd('git restore .')
-            utils.run_cmd('git clean -fdx')
+        # if build_type != 'upstream':
+        #     utils.run_cmd('git restore .')
+        #     utils.run_cmd('git clean -fdx')
 
     def _build_lib(self):
         print('[*]Building Libvirtfuzz...')
