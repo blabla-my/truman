@@ -52,7 +52,6 @@ def process(args):
                 '--target', target,
                 '--tool', tool
             ] + evaluation_flag + extra_flag
-            print(f"[+] {cmd}")
             commands.append((cmd, env_scripts_python_dir, debug))
 
     # Print number of commands and number of workers

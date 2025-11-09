@@ -192,7 +192,7 @@ class QEMUFuzz(object):
 
             seed_pattern = r'(\d{6})'
 
-            if True or not any(cov_record_coverage_final_dir.iterdir()):
+            if not any(cov_record_coverage_final_dir.iterdir()):
                 for file in unique_file_paths:
                     match = re.search(seed_pattern, file.name)
                     if not match:
@@ -387,9 +387,9 @@ class QEMUFuzz(object):
         # Sort the subdirectories by name and select the last one
         last_subdir = sorted(subdirs, key=lambda x: x.name)[-1]
         last_subdirs = sorted(subdirs, key=lambda x: x.name)
-        for last_subdir in last_subdirs:
-            for target_dir in last_subdir.iterdir():
-                self._collect_cov_one(target_dir, last_subdir)
+        # for last_subdir in last_subdirs:
+        for target_dir in last_subdir.iterdir():
+            self._collect_cov_one(target_dir, last_subdir)
 
         for cov_dir in cov_record_coverage_dir.iterdir():
             self._cov_draw(cov_dir)
