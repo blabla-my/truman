@@ -4,15 +4,16 @@ from multiprocessing import Pool
 from fuzz import QEMUFuzz
 
 
-def run_fuzz_on_target(target, round, asan = False):
+def run_fuzz_on_target(target, round, asan = False, fork = False):
     # python3 ~/truman/scripts/python/fuzz.py -e --fork -t virtio-scsi --tool truman
+    fork_arg = "--fork" if fork else ""
     if asan:
-        cmd = f"python3 ~/truman/scripts/python/fuzz.py --asan --fork -t {target} --tool truman"
+        cmd = f"python3 ~/truman/scripts/python/fuzz.py --asan {fork_arg} -t {target} --tool truman"
     else:
-        cmd = f"python3 ~/truman/scripts/python/fuzz.py -e --fork -t {target} --tool truman"
+        cmd = f"python3 ~/truman/scripts/python/fuzz.py -e {fork_arg} -t {target} --tool truman"
     print(f"[+] fuzz {target}, round {round}")
     print(f"[CMD] {cmd}")
-    p = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    p = subprocess.run(cmd, shell=True, text=True)
 
 def main(args):
     targets = filter(lambda x: "virtio" in x, QEMUFuzz.target2file)
@@ -29,5 +30,6 @@ if __name__ == "__main__":
     parser.add_argument('-j', '--jobs', type=int, default=12)
     parser.add_argument('--repeat', type=int, default=1)
     parser.add_argument('--asan', action='store_true', default=False)
+    parser.add_argument('--fork', action='store_true', default=False)
     args = parser.parse_args()
     main(args)

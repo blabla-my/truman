@@ -95,7 +95,7 @@ class QEMUFuzz(object):
         parser.add_argument('--tool', type=str, choices=['morphuzz', 'truman'], default='truman')
         parser.add_argument('-d', '--debug', action='store_true', default=False)
         parser.add_argument('--arch', choices=self.env.arch, default='x86_64')
-        parser.add_argument('--seed', type=str)
+        parser.add_argument('--seed', type=Path)
         parser.add_argument('--run', action='store_true')
         parser.add_argument('--disable_state', action='store_true')
 
@@ -126,6 +126,9 @@ class QEMUFuzz(object):
             self.evaluation_dir = self.env.out_fuzz_dir / f'{self.cur_target}'
         self.tmp_dir = self.env.tmp_dir / self.cur_target
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
+
+        if self.args.seed:
+            self.args.seed = self.args.seed.resolve()
 
     def _run_cmd(self, cmd, continuous=False, check=True, shell=True, env=None, stdout=None):
         if shell:
@@ -529,6 +532,8 @@ class QEMUFuzz(object):
                 continuous = False
             else:
                 stdout = log_file
+                env['QTEST_LOG'] = "1"
+                env['FUZZ_SERIALIZE_QTEST'] = "1"
 
             if self._run_cmd(cmd, continuous, shell=False, env=env, stdout=stdout) is not None and not self.args.seed and not self.args.run:
                 self._fuzz_one(target, continuous)
