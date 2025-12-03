@@ -119,8 +119,8 @@ class Setup(object):
         os.chdir(qemu_source)
         git_version = git.Repo(search_parent_directories=True).head.object.hexsha[:8]
 
-        # if build_type != 'upstream':
-        #     utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
+        if build_type != 'upstream':
+            utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
 
         os.chdir(qemu_build_dir)
         softmmu = []
@@ -150,9 +150,9 @@ class Setup(object):
         print(f'[+]Building qemu {build_type} done.')
 
         os.chdir(qemu_source)
-        # if build_type != 'upstream':
-        #     utils.run_cmd('git restore .')
-        #     utils.run_cmd('git clean -fdx')
+        if build_type != 'upstream':
+            utils.run_cmd('git restore .')
+            utils.run_cmd('git clean -fdx')
 
     def _build_lib(self):
         print('[*]Building Libvirtfuzz...')
