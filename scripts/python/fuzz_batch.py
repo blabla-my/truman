@@ -4,13 +4,13 @@ from multiprocessing import Pool
 from fuzz import QEMUFuzz
 
 
-def run_fuzz_on_target(target, round, asan = False, fork = False):
+def run_fuzz_on_target(seq, target, round, asan = False, fork = False):
     # python3 ~/truman/scripts/python/fuzz.py -e --fork -t virtio-scsi --tool truman
     fork_arg = "--fork" if fork else ""
     if asan:
-        cmd = f"python3 ~/truman/scripts/python/fuzz.py --asan {fork_arg} -t {target} --tool truman"
+        cmd = f"sleep {seq} && python3 ~/truman/scripts/python/fuzz.py --asan {fork_arg} -t {target} --tool truman"
     else:
-        cmd = f"python3 ~/truman/scripts/python/fuzz.py -e {fork_arg} -t {target} --tool truman"
+        cmd = f"sleep {seq} && python3 ~/truman/scripts/python/fuzz.py -e {fork_arg} -t {target} --tool truman"
     print(f"[+] fuzz {target}, round {round}")
     print(f"[CMD] {cmd}")
     p = subprocess.run(cmd, shell=True, text=True)
@@ -18,9 +18,9 @@ def run_fuzz_on_target(target, round, asan = False, fork = False):
 def main(args):
     targets = filter(lambda x: "virtio" in x, QEMUFuzz.target2file)
     tasks = []
-    for target in targets:
+    for seq,target in enumerate(targets):
         for i in range(args.repeat):
-            tasks.append((target, i, args.asan))
+            tasks.append((seq, target, i, args.asan))
     
     with Pool(processes = min(len(tasks), args.jobs)) as pool:
         pool.starmap(run_fuzz_on_target, tasks)
