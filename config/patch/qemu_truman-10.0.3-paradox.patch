@@ -6829,10 +6829,10 @@ index 0000000000..b6dc68e670
 +}
 diff --git a/tests/qtest/truman/truman_fuzz.c b/tests/qtest/truman/truman_fuzz.c
 new file mode 100644
-index 0000000000..67c90a9f99
+index 0000000000..5e5ddc62ce
 --- /dev/null
 +++ b/tests/qtest/truman/truman_fuzz.c
-@@ -0,0 +1,2444 @@
+@@ -0,0 +1,2448 @@
 +#include <wordexp.h>
 +
 +#include "string.h"
@@ -6862,8 +6862,8 @@ index 0000000000..67c90a9f99
 +#include "nvme.h"
 +
 +int (*qemu_main)(void);
-+extern unsigned long __start___llvm_prf_cnts __attribute__((weak));
-+extern unsigned long __stop___llvm_prf_cnts __attribute__((weak));
++extern uint64_t __start___llvm_prf_cnts[] __attribute__((weak));
++extern uint64_t __stop___llvm_prf_cnts[] __attribute__((weak));
 +
 +static const char *fuzz_arch = TARGET_NAME;
 +
@@ -7071,11 +7071,15 @@ index 0000000000..67c90a9f99
 +
 +    /* Set coverage to zero after initialize end */
 +    /* Hyperpill does the same thing since its initial coverage is contributed by the driver */
-+    uint8_t* pcstart = (uint8_t*)&__stop___llvm_prf_cnts;
-+    uint8_t* pcstop = (uint8_t*)&__start___llvm_prf_cnts;
-+    if (pcstart && pcstop && pcstop > pcstart) {
-+        size_t counters_size = pcstop - pcstart;
-+        memset(pcstart, 0, counters_size);
++    if (!__start___llvm_prf_cnts || !__stop___llvm_prf_cnts || 
++            __start___llvm_prf_cnts == __stop___llvm_prf_cnts) {
++        
++        printf("[PRELOAD] __llvm_prf_cnts section not found. Nothing to reset.\n");
++    } else {
++        size_t num_counters = __stop___llvm_prf_cnts - __start___llvm_prf_cnts;
++        size_t size_in_bytes = num_counters * sizeof(uint64_t);
++        printf("[PPELOASD] resetting __llvm_prf_cnts (%lx bytes).\n", size_in_bytes);
++        memset(__start___llvm_prf_cnts, 0, size_in_bytes);
 +    }
 +
 +    return 0;
