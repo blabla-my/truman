@@ -6829,10 +6829,10 @@ index 0000000000..b6dc68e670
 +}
 diff --git a/tests/qtest/truman/truman_fuzz.c b/tests/qtest/truman/truman_fuzz.c
 new file mode 100644
-index 0000000000..5e5ddc62ce
+index 0000000000..7f6e12e94c
 --- /dev/null
 +++ b/tests/qtest/truman/truman_fuzz.c
-@@ -0,0 +1,2448 @@
+@@ -0,0 +1,2447 @@
 +#include <wordexp.h>
 +
 +#include "string.h"
@@ -8291,8 +8291,7 @@ index 0000000000..5e5ddc62ce
 +        .arch = "x86_64",
 +        .name = "virtio-blk",
 +        .args = "-machine q35 -device virtio-blk-pci,drive=drive0 "
-+        "-drive file=null-co://,id=drive0,if=none,format=raw ",
-+        // "-blockdev node-name=drive0,driver=host_device,filename=/dev/nullb0,cache.direct=on",
++        "-blockdev node-name=drive0,driver=host_device,filename=/dev/nullb0,cache.direct=on,locking=off",
 +        .objects = "virtio*",
 +    },{
 +        .arch = "x86_64",
