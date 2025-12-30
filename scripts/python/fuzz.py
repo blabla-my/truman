@@ -115,7 +115,6 @@ class QEMUFuzz(object):
 
             if self.args.tool == None:
                 raise Exception(f"Please input the --tool")
-            self.git_version = ''
 
         target = self.args.target if self.args.target else "all"
         if self.args.evaluation:
@@ -132,8 +131,6 @@ class QEMUFuzz(object):
         if not self.args.collect:
             self.cov_record_dir.mkdir(parents=True, exist_ok=True)
 
-        print("Evaluation dir: ", self.evaluation_dir)
-        self.evaluation_dir.mkdir(parents=True, exist_ok=True)
         self.tmp_dir = self.env.tmp_dir / self.cur_target
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
 
