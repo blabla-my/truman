@@ -77,9 +77,11 @@ class QEMUFuzz(object):
     def _setup(self):
         self.env = utils.get_env()
         self.cov_cnt = 1
+        old_dir = os.getcwd()
         os.chdir(f'{self.env.third_party_qemu_dir}')
         self.git_version = git.Repo(search_parent_directories=True).head.object.hexsha[:8]
         utils.run_cmd(f'cp {self.env.config_dbm_dir}/* {self.env.out_static_analysis_dir}')
+        os.chdir(old_dir)
         print("[+] setup done.")
 
     def _parse_args(self):
@@ -98,6 +100,7 @@ class QEMUFuzz(object):
         parser.add_argument('--seed', type=Path)
         parser.add_argument('--run', action='store_true')
         parser.add_argument('--disable_state', action='store_true')
+        parser.add_argument('-o', '--out', type=Path, help='Override the default evaluation output directory')
 
         self.args = parser.parse_args()
 
@@ -118,12 +121,19 @@ class QEMUFuzz(object):
         if self.args.evaluation:
             self.cur_target = f'{self.args.tool}_{target}_{self.git_version}_{time.strftime("%m%d%H%M", time.localtime())}'
             self.evaluation_dir = self.env.out_fuzz_dir / f'evaluation_{time.strftime("%m%d", time.localtime())}' / self.cur_target
-            self.cov_record_dir = self.evaluation_dir / 'cov_record'
-            if not self.args.collect:
-                self.cov_record_dir.mkdir(parents=True, exist_ok=True)
         else:
             self.cur_target = f'{self.args.tool}_{target}_{self.git_version}_generic'
             self.evaluation_dir = self.env.out_fuzz_dir / f'{self.cur_target}'
+
+        if self.args.out:
+            self.evaluation_dir = self.args.out.resolve() / self.cur_target
+
+        self.cov_record_dir = self.evaluation_dir / 'cov_record'
+        if not self.args.collect:
+            self.cov_record_dir.mkdir(parents=True, exist_ok=True)
+
+        print("Evaluation dir: ", self.evaluation_dir)
+        self.evaluation_dir.mkdir(parents=True, exist_ok=True)
         self.tmp_dir = self.env.tmp_dir / self.cur_target
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
 
