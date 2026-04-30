@@ -119,44 +119,50 @@ class Setup(object):
         qemu_source = f'{self.env.third_party_qemu_dir}'
         os.chdir(qemu_source)
         git_version = git.Repo(search_parent_directories=True).head.object.hexsha[:8]
+        patched_qemu_source = build_type != 'upstream' or self.args.backport
 
-        if build_type != 'upstream':
-            utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
-        if self.args.backport:
-            utils.run_cmd('git apply ../../config/patch/qemu-10.0.3-cve-reverse.patch')
-
-        os.chdir(qemu_build_dir)
-        softmmu = []
-        for arch in self.env.arch:
-            softmmu.append(f'{arch}-softmmu')
-        softmmus = ','.join(softmmu)
-        utils.run_cmd(f'{qemu_source}/configure --cc=clang '
-                f'--target-list={softmmus} {build_flags} '
-                f'--prefix={qemu_install_dir} --disable-werror --disable-xen --enable-slirp '
-                '--enable-alsa --disable-xkbcommon --enable-opengl --enable-virglrenderer')
-
-        if build_type == 'fuzz_with_asan' or build_type == 'fuzz_without_asan' or build_type == 'coverage':
-            threads = '4' if build_type == 'coverage' else '`nproc`'
-            utils.run_cmd(f'make -j{threads}')
-            utils.run_cmd(f'make install -j{threads}')
-            for arch in self.env.arch:
-                utils.run_cmd(f'cp {qemu_install_dir}/bin/qemu-truman-{arch} {qemu_install_dir}/bin/qemu-truman-{arch}-{git_version}')
-        elif build_type == 'upstream':
-            utils.run_cmd(f'bear -- make -j`nproc` qemu-system-x86_64')
-            utils.run_cmd(f'make install -j`nproc`')
-            utils.run_cmd(f'ln -sf {qemu_build_dir}/compile_commands.json '
-                    f'{self.env.third_party_qemu_dir}/compile_commands.json')
-        else:
-            utils.run_cmd(f'make -j`nproc`')
-            utils.run_cmd(f'make install -j`nproc`')
-
-        print(f'[+]Building qemu {build_type} done.')
-
-        os.chdir(qemu_source)
         if build_type != 'upstream' or self.args.backport:
             utils.run_cmd('git restore .')
         if build_type != 'upstream':
             utils.run_cmd('git clean -fdx')
+        try:
+            if build_type != 'upstream':
+                utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
+            if self.args.backport:
+                utils.run_cmd('git apply ../../config/patch/qemu-10.0.3-cve-reverse.patch')
+
+            os.chdir(qemu_build_dir)
+            softmmu = []
+            for arch in self.env.arch:
+                softmmu.append(f'{arch}-softmmu')
+            softmmus = ','.join(softmmu)
+            utils.run_cmd(f'{qemu_source}/configure --cc=clang '
+                    f'--target-list={softmmus} {build_flags} '
+                    f'--prefix={qemu_install_dir} --disable-werror --disable-xen --enable-slirp '
+                    '--enable-alsa --disable-xkbcommon --enable-opengl --enable-virglrenderer')
+
+            if build_type == 'fuzz_with_asan' or build_type == 'fuzz_without_asan' or build_type == 'coverage':
+                threads = '4' if build_type == 'coverage' else '`nproc`'
+                utils.run_cmd(f'make -j{threads}')
+                utils.run_cmd(f'make install -j{threads}')
+                for arch in self.env.arch:
+                    utils.run_cmd(f'cp {qemu_install_dir}/bin/qemu-truman-{arch} {qemu_install_dir}/bin/qemu-truman-{arch}-{git_version}')
+            elif build_type == 'upstream':
+                utils.run_cmd(f'bear -- make -j`nproc` qemu-system-x86_64')
+                utils.run_cmd(f'make install -j`nproc`')
+                utils.run_cmd(f'ln -sf {qemu_build_dir}/compile_commands.json '
+                        f'{self.env.third_party_qemu_dir}/compile_commands.json')
+            else:
+                utils.run_cmd(f'make -j`nproc`')
+                utils.run_cmd(f'make install -j`nproc`')
+
+            print(f'[+]Building qemu {build_type} done.')
+        finally:
+            if patched_qemu_source:
+                os.chdir(qemu_source)
+                utils.run_cmd('git restore .')
+                if build_type != 'upstream':
+                    utils.run_cmd('git clean -fdx')
 
     def _build_lib(self):
         print('[*]Building Libvirtfuzz...')
