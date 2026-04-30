@@ -41,6 +41,7 @@ class Setup(object):
         parser.add_argument('--clean_build', action='store_true')
         parser.add_argument('--build_lib', action='store_true')
         parser.add_argument('--build_protobuf', action='store_true')
+        parser.add_argument('--backport', action='store_true')
 
         self.args = parser.parse_args()
 
@@ -121,6 +122,8 @@ class Setup(object):
 
         if build_type != 'upstream':
             utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
+        if self.args.backport:
+            utils.run_cmd('git apply ../../config/patch/qemu-10.0.3-cve-reverse.patch')
 
         os.chdir(qemu_build_dir)
         softmmu = []
@@ -150,8 +153,9 @@ class Setup(object):
         print(f'[+]Building qemu {build_type} done.')
 
         os.chdir(qemu_source)
-        if build_type != 'upstream':
+        if build_type != 'upstream' or self.args.backport:
             utils.run_cmd('git restore .')
+        if build_type != 'upstream':
             utils.run_cmd('git clean -fdx')
 
     def _build_lib(self):
