@@ -25,6 +25,16 @@ python3 /path/to/truman/scripts/python/docker.py --run
 python3 /path/to/truman/scripts/python/setup.py
 ```
 
+To build against QEMU 8.0.0 instead of the default QEMU 10.0.3, select the
+version explicitly:
+
+```
+python3 /path/to/truman/scripts/python/setup.py --build_qemu all --qemu_version 8.0.0
+```
+
+The setup script checks out the selected QEMU revision in `third_party/qemu`;
+subsequent fuzzing commands use the binaries built from that same revision.
+
 ### 3. Generate the Fuzzing Command Line
 
 ```
@@ -35,6 +45,12 @@ python3 /path/to/truman/scripts/python/fuzz_cmd.py
 
 ```
 python3 /path/to/truman/scripts/python/fuzz.py -e --fork -t virtio-sound --tool truman
+```
+
+Select the QEMU 8.0.0 binaries explicitly after building that version:
+
+```
+python3 /path/to/truman/scripts/python/fuzz.py -e --fork -t virtio-gpu --tool truman --qemu_version 8.0.0
 ```
 
 Results will be saved in a directory like:  `/path/to/truman/out/fuzz/evaluation_0101`

@@ -95,6 +95,8 @@ class QEMUFuzz(object):
         parser.add_argument('--cov_record', action="store_true")
         parser.add_argument('--fork', action='store_true')
         parser.add_argument('--tool', type=str, choices=['morphuzz', 'truman'], default='truman')
+        parser.add_argument('--qemu_version', choices=utils.QEMU_VERSIONS.keys(),
+                            help='Select binaries built from this QEMU release')
         parser.add_argument('-d', '--debug', action='store_true', default=False)
         parser.add_argument('--arch', choices=self.env.arch, default='x86_64')
         parser.add_argument('--seed', type=Path)
@@ -103,6 +105,9 @@ class QEMUFuzz(object):
         parser.add_argument('-o', '--out', type=Path, help='Override the default evaluation output directory')
 
         self.args = parser.parse_args()
+
+        if self.args.qemu_version:
+            self.git_version = utils.QEMU_VERSIONS[self.args.qemu_version]['revision'][:8]
 
         if self.args.collect:
             found = False
@@ -461,6 +466,24 @@ class QEMUFuzz(object):
         self.artifact_watch_thread = threading.Thread(target=self._watch_artifact_dir, args=(artifact_dir, cmd))
         self.artifact_watch_thread.start()
 
+    def _fuzzer_path(self, build_type):
+        if build_type == 'coverage':
+            qemu_dir = self.env.install_qemu_coverage_dir
+        elif self.args.asan:
+            qemu_dir = self.env.install_qemu_fuzz_with_asan_dir
+        else:
+            qemu_dir = self.env.install_qemu_fuzz_without_asan_dir
+
+        binary = self.env.truman_fuzz_binary if self.args.tool == 'truman' else self.env.fuzz_binary
+        fuzzer = qemu_dir / 'bin' / f'{binary}-{self.git_version}'
+        fuzzer = Path(str(fuzzer).replace('x86_64', self.args.arch))
+        if not fuzzer.is_file():
+            raise FileNotFoundError(
+                f'Cannot find {fuzzer}. Build QEMU {self.args.qemu_version or self.git_version} '
+                f'with scripts/python/setup.py --build_qemu {build_type} first.'
+            )
+        return fuzzer
+
     def _stop_artifact_watcher(self):
         self.stop_artifact_watch.set()
         self.artifact_watch_thread.join()
@@ -476,23 +499,7 @@ class QEMUFuzz(object):
         log_file.parent.mkdir(exist_ok=True, parents=True)
         profraw = corpus_dir / f'{target}.profraw'
 
-        if self.args.tool == 'truman':
-            if self.args.asan:
-                fuzzer = f'{self.env.build_qemu_truman_fuzz_with_asan_binary}-{self.git_version}'
-            else:
-                fuzzer = f'{self.env.build_qemu_truman_fuzz_without_asan_binary}-{self.git_version}'
-        else:
-            if self.args.asan:
-                fuzzer = f'{self.env.build_qemu_fuzz_with_asan_binary}'
-            else:
-                fuzzer = f'{self.env.build_qemu_fuzz_without_asan_binary}'
-        fuzzer = fuzzer.replace('x86_64', self.args.arch)
-
-        if self.args.evaluation:
-            if self.args.tool == 'truman':
-                fuzzer = f'{self.env.install_qemu_fuzz_without_asan_dir}/bin/{self.env.truman_fuzz_binary}'
-            else:
-                fuzzer = f'{self.env.install_qemu_fuzz_without_asan_dir}/bin/{self.env.fuzz_binary}'
+        fuzzer = self._fuzzer_path('fuzz_with_asan' if self.args.asan else 'fuzz_without_asan')
 
         env = os.environ.copy()
         qemu_device_model_file = self.env.out_static_analysis_dir / f'{target}.json'
@@ -544,7 +551,8 @@ class QEMUFuzz(object):
 
             if self._run_cmd(cmd, continuous, shell=False, env=env, stdout=stdout) is not None and not self.args.seed and not self.args.run:
                 self._fuzz_one(target, continuous)
-            self._stop_artifact_watcher()
+            if hasattr(self, 'stop_artifact_watch'):
+                self._stop_artifact_watcher()
 
     def _find_free_cpu(self, threshold=10.0):
         cpu_percentages = psutil.cpu_percent(interval=1, percpu=True)

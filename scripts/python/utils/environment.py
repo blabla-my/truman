@@ -3,6 +3,27 @@ import types
 import multiprocessing
 from pathlib import Path
 
+QEMU_VERSIONS = {
+    '8.0.0': {
+        'revision': 'c1eb2ddf0f8075faddc5f7c3d39feae3e8e9d6b4',
+        'tag': 'v8.0.0',
+        'patch': 'qemu_truman-8.0.0.patch',
+        'asan_flag': '--enable-sanitizers',
+        'backport_patch': None,
+        'submodules': 'ui/keycodemapdb meson tests/fp/berkeley-testfloat-3 '
+                      'tests/fp/berkeley-softfloat-3 dtc',
+    },
+    '10.0.3': {
+        'revision': '66d21643c2b8f2bec969a80ccea09667c77151ee',
+        'tag': 'v10.0.3',
+        'patch': 'qemu_truman-10.0.3-paradox.patch',
+        'asan_flag': '--enable-asan',
+        'backport_patch': 'qemu-10.0.3-cve-reverse.patch',
+        'submodules': '',
+    },
+}
+
+
 def get_env():
     env = types.SimpleNamespace()
     env.project_name = 'truman'

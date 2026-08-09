@@ -6,6 +6,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate Docker commands for Truman fuzzing or evaluation.")
     parser.add_argument('--fuzz', action='store_true', help="Generate commands for fuzzing with the --fuzz flag")
     parser.add_argument('--evaluation', action='store_true', help="Generate commands for evaluation with the --evaluation flag")
+    parser.add_argument('--qemu_version', choices=utils.QEMU_VERSIONS.keys(), default='10.0.3')
     args = parser.parse_args()
 
     env = utils.get_env()
@@ -13,4 +14,4 @@ if __name__ == "__main__":
 
     for tool in ['morphuzz', 'truman']:
         for target in env.targets:
-            print(f'{prefix} -e --fork -t {target} --tool {tool}')
+            print(f'{prefix} -e --fork -t {target} --tool {tool} --qemu_version {args.qemu_version}')

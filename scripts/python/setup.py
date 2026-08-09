@@ -34,6 +34,8 @@ class Setup(object):
 
         parser.add_argument('--build_qemu', type=str,
                 choices=['evaluation', 'fuzz_with_asan', 'fuzz_without_asan', 'coverage', 'upstream', 'all'])
+        parser.add_argument('--qemu_version', type=str, default='10.0.3',
+                choices=utils.QEMU_VERSIONS.keys())
         parser.add_argument('--build_llvm', action='store_true')
         parser.add_argument('--build_linux', type=str, choices=['allmod_v6.6'])
         parser.add_argument('--build_analyzer', action='store_true')
@@ -88,7 +90,11 @@ class Setup(object):
         os.environ['LD_LIBRARY_PATH'] = f'{self.env.install_protobuf_dir}/lib:{os.environ.get("LD_LIBRARTY_PATH", "")}'
 
     def _build_qemu(self, build_type):
-        print(f'[*]Start to build qemu {build_type}...')
+        print(f'[*]Start to build qemu {self.args.qemu_version} ({build_type})...')
+        qemu_version = utils.QEMU_VERSIONS[self.args.qemu_version]
+
+        if self.args.backport and not qemu_version['backport_patch']:
+            raise ValueError(f'QEMU {self.args.qemu_version} does not support --backport')
 
         if build_type == 'all':
             #self._build_qemu('upstream')
@@ -99,7 +105,7 @@ class Setup(object):
         elif build_type == 'upstream':
             qemu_build_dir = self.env.build_qemu_upstream_dir
             qemu_install_dir = self.env.install_qemu_upstream_dir
-            build_flags = '--enable-debug --enable-asan'
+            build_flags = f'--enable-debug {qemu_version["asan_flag"]}'
         elif build_type == 'coverage':
             qemu_build_dir = self.env.build_qemu_coverage_dir
             qemu_install_dir = self.env.install_qemu_coverage_dir
@@ -107,7 +113,7 @@ class Setup(object):
         elif build_type == 'fuzz_with_asan':
             qemu_build_dir = self.env.build_qemu_fuzz_with_asan_dir
             qemu_install_dir = self.env.install_qemu_fuzz_with_asan_dir
-            build_flags = '--enable-fuzzing --enable-asan --extra-cflags="-O3"'
+            build_flags = f'--enable-fuzzing {qemu_version["asan_flag"]} --extra-cflags="-O3"'
         elif build_type == 'fuzz_without_asan':
             qemu_build_dir = self.env.build_qemu_fuzz_without_asan_dir
             qemu_install_dir = self.env.install_qemu_fuzz_without_asan_dir
@@ -118,6 +124,7 @@ class Setup(object):
 
         qemu_source = f'{self.env.third_party_qemu_dir}'
         os.chdir(qemu_source)
+        self._checkout_qemu_version(qemu_version)
         git_version = git.Repo(search_parent_directories=True).head.object.hexsha[:8]
         patched_qemu_source = build_type != 'upstream' or self.args.backport
 
@@ -127,9 +134,9 @@ class Setup(object):
             utils.run_cmd('git clean -fdx')
         try:
             if build_type != 'upstream':
-                utils.run_cmd('git apply ../../config/patch/qemu_truman-10.0.3-paradox.patch')
+                utils.run_cmd(f'git apply {self.env.config_dir / "patch" / qemu_version["patch"]}')
             if self.args.backport:
-                utils.run_cmd('git apply ../../config/patch/qemu-10.0.3-cve-reverse.patch')
+                utils.run_cmd(f'git apply {self.env.config_dir / "patch" / qemu_version["backport_patch"]}')
 
             os.chdir(qemu_build_dir)
             softmmu = []
@@ -146,7 +153,9 @@ class Setup(object):
                 utils.run_cmd(f'make -j{threads}')
                 utils.run_cmd(f'make install -j{threads}')
                 for arch in self.env.arch:
-                    utils.run_cmd(f'cp {qemu_install_dir}/bin/qemu-truman-{arch} {qemu_install_dir}/bin/qemu-truman-{arch}-{git_version}')
+                    for binary in [self.env.fuzz_binary, self.env.truman_fuzz_binary]:
+                        utils.run_cmd(f'cp {qemu_install_dir}/bin/{binary.replace("x86_64", arch)} '
+                                      f'{qemu_install_dir}/bin/{binary.replace("x86_64", arch)}-{git_version}')
             elif build_type == 'upstream':
                 utils.run_cmd(f'bear -- make -j`nproc` qemu-system-x86_64')
                 utils.run_cmd(f'make install -j`nproc`')
@@ -163,6 +172,34 @@ class Setup(object):
                 utils.run_cmd('git restore .')
                 if build_type != 'upstream':
                     utils.run_cmd('git clean -fdx')
+
+    def _checkout_qemu_version(self, qemu_version):
+        revision = qemu_version['revision']
+        revision_available = subprocess.run(
+            ['git', 'cat-file', '-e', f'{revision}^{{commit}}'],
+            check=False,
+        ).returncode == 0
+
+        if not revision_available:
+            utils.run_cmd(f'git fetch --no-tags origin tag {qemu_version["tag"]}')
+
+        utils.run_cmd(f'git checkout --detach {revision}')
+        self._update_qemu_submodules(qemu_version)
+
+    def _update_qemu_submodules(self, qemu_version):
+        submodules = qemu_version.get('submodules', '')
+        if not submodules:
+            return
+
+        cmd = f'git submodule update --init {submodules}'
+        ret = utils.run_cmd(cmd, check=False)
+        if ret is None or ret.returncode != 0:
+            print('[*]QEMU submodule update failed, retrying without proxy...')
+            env = os.environ.copy()
+            for key in ('HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy',
+                        'ALL_PROXY', 'all_proxy'):
+                env.pop(key, None)
+            utils.run_cmd(cmd, env=env)
 
     def _build_lib(self):
         print('[*]Building Libvirtfuzz...')
